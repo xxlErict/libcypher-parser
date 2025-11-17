@@ -50,29 +50,55 @@ jobs:
           cd libcypher-parser
           ls -la
 
-      - name: Apply Windows patches
-        shell: msys2 {0}
-        run: |
-          cd libcypher-parser
-
-          # sigjmp_buf fix
-          sed -i '1i #include <setjmp.h>\n#ifdef _WIN32\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' src/parser.c
-
-          # isatty/fileno fix + Windows headers
-          sed -i '1i #ifdef _WIN32\n#include <io.h>\n#define isatty _isatty\n#define fileno _fileno\n#include <windows.h>\n#endif\n' src/cypher-lint.c
-
-          # Fix missing (void)
-          sed -E -i 's/bool[[:space:]]+EnableVTMode[[:space:]]*\\(\\)/bool EnableVTMode(void)/g' src/cypher-lint.c
-
-          echo "Patches applied."
-
-      - name: Build
+      - name: Generate configure scripts
         shell: msys2 {0}
         run: |
           cd libcypher-parser
           ./autogen.sh || true
+          ls -la  # 确认生成 parser.c 和 configure 文件
 
+      - name: Apply Windows patches
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser/src
+
+          # patch parser.c
+          if [ -f parser.c ]; then
+            sed -i '1i #include <setjmp.h>\n#ifdef _WIN32\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser.c
+          fi
+
+          # patch cypher-lint.c
+          if [ -f cypher-lint.c ]; then
+            sed -i '1i #ifdef _WIN32\n#include <io.h>\n#define isatty _isatty\n#define fileno _fileno\n#include <windows.h>\n#endif\n' cypher-lint.c
+
+            # 修复无参函数声明
+            sed -E -i 's/bool[[:space:]]+EnableVTMode[[:space:]]*\\(\\)/bool EnableVTMode(void)/g' cypher-lint.c
+          fi
+
+          echo "Windows patches applied."
+
+      - name: Configure and build
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser
           export CC=clang
           export CFLAGS="-O0 -Wno-error -Wno-strict-prototypes -Wno-implicit-function-declaration"
-
           ./configure --prefix=/usr
+          make -j1
+
+      - name: Package artifact
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser/src
+          mkdir -p release
+          cp cypher-lint.exe release/
+          cp /mingw64/bin/libgcc* release/ 2>/dev/null || true
+          cp /mingw64/bin/libwinpthread* release/ 2>/dev/null || true
+          cd release
+          zip -r cypher-lint-windows.zip *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypher-lint-windows
+          path: libcypher-parser/src/release/cypher-lint-windows.zip
