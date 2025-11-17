@@ -50,41 +50,39 @@ jobs:
           cd libcypher-parser
           ls -la
 
-      - name: Generate configure scripts
+      - name: Patch cypher-lint.c (pre-build)
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser
+          if [ -f src/cypher-lint.c ]; then
+            sed -i '1i #ifdef _WIN32\n#include <io.h>\n#define isatty _isatty\n#define fileno _fileno\n#include <windows.h>\n#endif\n' src/cypher-lint.c
+            sed -E -i 's/bool[[:space:]]+EnableVTMode[[:space:]]*\(\)/bool EnableVTMode(void)/g' src/cypher-lint.c
+          fi
+          echo "Patched cypher-lint.c"
+
+      - name: Autogen and configure
         shell: msys2 {0}
         run: |
           cd libcypher-parser
           ./autogen.sh || true
-          ls -la  # 确认生成 parser.c 和 configure 文件
-
-      - name: Apply Windows patches
-        shell: msys2 {0}
-        run: |
-          cd libcypher-parser/src
-
-          # patch parser.c
-          if [ -f parser.c ]; then
-            sed -i '1i #include <setjmp.h>\n#ifdef _WIN32\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser.c
-          fi
-
-          # patch cypher-lint.c
-          if [ -f cypher-lint.c ]; then
-            sed -i '1i #ifdef _WIN32\n#include <io.h>\n#define isatty _isatty\n#define fileno _fileno\n#include <windows.h>\n#endif\n' cypher-lint.c
-
-            # 修复无参函数声明
-            sed -E -i 's/bool[[:space:]]+EnableVTMode[[:space:]]*\\(\\)/bool EnableVTMode(void)/g' cypher-lint.c
-          fi
-
-          echo "Windows patches applied."
-
-      - name: Configure and build
-        shell: msys2 {0}
-        run: |
-          cd libcypher-parser
           export CC=clang
           export CFLAGS="-O0 -Wno-error -Wno-strict-prototypes -Wno-implicit-function-declaration"
           ./configure --prefix=/usr
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser
           make -j1
+
+      - name: Patch parser.c (post-build)
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser
+          if [ -f src/parser.c ]; then
+            sed -i '1i #include <setjmp.h>\n#ifdef _WIN32\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' src/parser.c
+          fi
+          echo "Patched parser.c"
 
       - name: Package artifact
         shell: msys2 {0}
