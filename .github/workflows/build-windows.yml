@@ -75,14 +75,22 @@ jobs:
           cd libcypher-parser
           make -j1
 
-      - name: Patch parser.c (post-build)
+      - name: Patch parser files (post-build)
         shell: msys2 {0}
         run: |
-          cd libcypher-parser
-          if [ -f src/parser.c ]; then
-            sed -i '1i #include <setjmp.h>\n#ifdef _WIN32\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' src/parser.c
+          cd libcypher-parser/src
+
+          # Patch parser.c
+          if [ -f parser.c ]; then
+            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env, savesigs) setjmp(env)\n#define siglongjmp(env, val) longjmp(env, val)\n#endif\n' parser.c
           fi
-          echo "Patched parser.c"
+
+          # Patch parser_leg.c
+          if [ -f parser_leg.c ]; then
+            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env, savesigs) setjmp(env)\n#define siglongjmp(env, val) longjmp(env, val)\n#endif\n' parser_leg.c
+          fi
+
+          echo "Patched parser.c and parser_leg.c"
 
       - name: Package artifact
         shell: msys2 {0}
