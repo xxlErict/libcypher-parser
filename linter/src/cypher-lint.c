@@ -105,7 +105,7 @@ static void print_error(const cypher_parse_error_t *error, const char *filename,
 // System headers
 #include <windows.h>
 // Standard library C-style
-bool EnableVTMode(void)
+bool EnableVTMode()
 {
 	// Set output mode to handle virtual terminal sequences
 	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
