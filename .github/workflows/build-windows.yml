@@ -50,6 +50,15 @@ jobs:
           cd libcypher-parser
           ls -la
 
+      - name: Patch leg template for Windows
+        shell: msys2 {0}
+        run: |
+          cd libcypher-parser/src
+          if [ -f parser.peg ]; then
+            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser.peg
+            echo "Patched parser.peg for Windows sigjmp_buf"
+          fi
+
       - name: Patch cypher-lint.c (pre-build)
         shell: msys2 {0}
         run: |
@@ -57,8 +66,8 @@ jobs:
           if [ -f src/cypher-lint.c ]; then
             sed -i '1i #ifdef _WIN32\n#include <io.h>\n#define isatty _isatty\n#define fileno _fileno\n#include <windows.h>\n#endif\n' src/cypher-lint.c
             sed -E -i 's/bool[[:space:]]+EnableVTMode[[:space:]]*\(\)/bool EnableVTMode(void)/g' src/cypher-lint.c
+            echo "Patched cypher-lint.c"
           fi
-          echo "Patched cypher-lint.c"
 
       - name: Autogen and configure
         shell: msys2 {0}
@@ -74,23 +83,6 @@ jobs:
         run: |
           cd libcypher-parser
           make -j1
-
-      - name: Patch parser files (post-build)
-        shell: msys2 {0}
-        run: |
-          cd libcypher-parser/src
-
-          # Patch parser.c
-          if [ -f parser.c ]; then
-            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser.c
-          fi
-
-          # Patch parser_leg.c
-          if [ -f parser_leg.c ]; then
-            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser_leg.c
-          fi
-
-          echo "Patched parser.c and parser_leg.c"
 
       - name: Package artifact
         shell: msys2 {0}
