@@ -82,12 +82,12 @@ jobs:
 
           # Patch parser.c
           if [ -f parser.c ]; then
-            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env, savesigs) setjmp(env)\n#define siglongjmp(env, val) longjmp(env, val)\n#endif\n' parser.c
+            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser.c
           fi
 
           # Patch parser_leg.c
           if [ -f parser_leg.c ]; then
-            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env, savesigs) setjmp(env)\n#define siglongjmp(env, val) longjmp(env, val)\n#endif\n' parser_leg.c
+            sed -i '1i #ifdef _WIN32\n#include <setjmp.h>\ntypedef jmp_buf sigjmp_buf;\n#define sigsetjmp(env,savesigs) setjmp(env)\n#define siglongjmp(env,val) longjmp(env,val)\n#endif\n' parser_leg.c
           fi
 
           echo "Patched parser.c and parser_leg.c"
