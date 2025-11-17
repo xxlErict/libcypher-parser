@@ -1,3 +1,12 @@
+#ifdef _WIN32
+    #include <setjmp.h>
+    typedef jmp_buf sigjmp_buf;
+    #define sigsetjmp(env, savesigs) setjmp(env)
+    #define siglongjmp(env, val) longjmp(env, val)
+#else
+    #include <setjmp.h>
+#endif
+
 /* @configure_input@ */
 
 /* Define to 1 if C supports variable-length arrays. */
